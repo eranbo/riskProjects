@@ -1,0 +1,37 @@
+@import '../common/colors';
+
+.risk-projects {
+  &.portlet {
+    background-color: $portlet-background-color;
+    padding: 8pt;
+
+    tbody {
+      tr.MuiTableRow-root {
+        td:last-child {
+          div {
+            flex-direction: row-reverse;
+          }
+        }
+      }
+    }
+  }
+
+  .vulnerabilityCount {
+    display: inline-block;
+    height: 14pt;
+    text-align: center;
+    color: white;
+
+    &.high {
+      background-color: $severity-high;
+    }
+
+    &.medium {
+      background-color: $severity-medium;
+    }
+
+    &.low {
+      background-color: $severity-low;
+    }
+  }
+}
