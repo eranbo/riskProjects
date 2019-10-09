@@ -29,10 +29,11 @@ export default class RiskProjects extends Component {
                     field: 'calculatedRiskLevel',
                     editable: 'never',
                     searchable: false,
+                    headerStyle: {width: 100},
                     render: rowData => <img src={rowData.calculatedRiskLevel.image} alt={`${rowData.calculatedRiskLevel.value}`}/>
                 },
                 {title: 'Project name', field: 'name'},
-                {title: 'Dependencies', field: 'calculatedDependencies', editable: 'never', searchable: false},
+                {title: 'Dependencies', field: 'calculatedDependencies', editable: 'never', searchable: false, headerStyle: {width: 50}},
                 {
                     title: 'Vulnerabilities',
                     field: 'vulnerabilitiesCount',
@@ -45,6 +46,7 @@ export default class RiskProjects extends Component {
                     field: 'createdOn',
                     editable: 'never',
                     searchable: false,
+                    headerStyle: {width: 150},
                     render: rowData => <span>{rowData.createdOn ? moment(rowData.createdOn).fromNow() : 'Never scanned'}</span>
                 },
             ],
@@ -55,25 +57,36 @@ export default class RiskProjects extends Component {
 
     componentDidMount = async () => {
         let projects = await RiskProjectsService.getProjects();
+        console.log(projects);
         let riskReportsPromises = [];
         _.forEach(projects, project => {
             riskReportsPromises.push(RiskProjectsService.getRiskReports(project.id));
         });
 
-        Q.all(riskReportsPromises).then(allRiskReports => {
-            _.forEach(allRiskReports, reports => {
-                if (!_.isEmpty(reports)) {
-                    let latestReport = _.chain(reports).orderBy(report => report.createdOn, 'desc').head().value();
+        Q.all(riskReportsPromises).then(allRiskReportsResults => {
+            _.forEach(allRiskReportsResults, result => {
+                let baseRowData = {
+                    projectId: result.projectId,
+                    name: (_.find(projects, project => project.id === result.projectId)).name,
+                    calculatedRiskLevel: {value: 'none', image: riskNone},
+                    calculatedDependencies: 'No dependencies',
+                    vulnerabilitiesCount: {low: 0, medium: 0, high: 0},
+                    createdOn: null
+                };
+
+                if (!_.isEmpty(result.reports)) {
+                    let latestReport = _.chain(result.reports).orderBy(report => report.createdOn, 'desc').head().value();
                     let rowData = {
-                        projectId: latestReport.projectId,
                         calculatedRiskLevel: this.calculateRiskLevel(latestReport),
-                        name: (_.find(projects, project => project.id === latestReport.projectId)).name,
                         calculatedDependencies: latestReport.totalPackages ? `${latestReport.totalPackages}(${latestReport.directPackages})` : 'No dependencies',
                         vulnerabilitiesCount: {low: latestReport.lowVulnerabilitiesCount, medium: latestReport.mediumVulnerabilitiesCount, high: latestReport.highVulnerabilitiesCount},
                         createdOn: latestReport.createdOn
                     };
-                    this.tableData.push(rowData);
+                    this.tableData.push(_.assign(baseRowData, rowData));
+                } else {
+                    this.tableData.push(baseRowData);
                 }
+
             });
             this.setState({data: this.tableData});
         });
@@ -105,16 +118,18 @@ export default class RiskProjects extends Component {
     };
 
     addProject = () => {
-        let rowData = {
-            projectId: 'newProjectId',
-            calculatedRiskLevel: {value: 'none', image: riskNone},
-            name: 'New Project',
-            calculatedDependencies: 'No dependencies',
-            vulnerabilitiesCount: {low: 0, medium: 0, high: 0},
-            createdOn: null
-        };
-        this.tableData.push(rowData)
-        this.setState({data: this.tableData});
+        RiskProjectsService.addProject('New Project').then(response => {
+            let rowData = {
+                projectId: response.id,
+                calculatedRiskLevel: {value: 'none', image: riskNone},
+                name: 'New Project',
+                calculatedDependencies: 'No dependencies',
+                vulnerabilitiesCount: {low: 0, medium: 0, high: 0},
+                createdOn: null
+            };
+            this.tableData.push(rowData)
+            this.setState({data: this.tableData});
+        });
     };
 
     render() {
@@ -150,15 +165,19 @@ export default class RiskProjects extends Component {
                         }
                     ]}
                     editable={{
-                        onRowUpdate: (newData, oldData) =>
-                            new Promise(resolve => {
-                                setTimeout(() => {
-                                    resolve();
-                                    const data = [...this.state.data];
-                                    data[data.indexOf(oldData)] = newData;
-                                    this.setState({...this.state, data});
-                                }, 600);
-                            }),
+                        onRowUpdate: (newData, oldData) => {
+                            return RiskProjectsService.updateProject({id: newData.projectId, name: newData.name}).then(response => {
+                                return new Promise(resolve => {
+                                    setTimeout(() => {
+                                        resolve();
+                                        const data = [...this.state.data];
+                                        newData.name = response.name;
+                                        data[data.indexOf(oldData)] = newData;
+                                        this.setState({...this.state, data});
+                                    }, 600);
+                                });
+                            });
+                        },
                     }}
                 />
                 <Menu id="simple-menu"
