@@ -57,7 +57,6 @@ export default class RiskProjects extends Component {
 
     componentDidMount = async () => {
         let projects = await RiskProjectsService.getProjects();
-        console.log(projects);
         let riskReportsPromises = [];
         _.forEach(projects, project => {
             riskReportsPromises.push(RiskProjectsService.getRiskReports(project.id));
@@ -109,7 +108,7 @@ export default class RiskProjects extends Component {
         console.log('run scan', event, rowData);
     };
 
-    openMenu = (event, rowData) => {
+    openMenu = (event) => {
         this.setState({menuAnchorElement: event.currentTarget});
     };
 
@@ -127,7 +126,7 @@ export default class RiskProjects extends Component {
                 vulnerabilitiesCount: {low: 0, medium: 0, high: 0},
                 createdOn: null
             };
-            this.tableData.push(rowData)
+            this.tableData.push(rowData);
             this.setState({data: this.tableData});
         });
     };
