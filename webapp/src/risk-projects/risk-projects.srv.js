@@ -1,4 +1,4 @@
-let baseUrl = 'http://localhost:3001'
+let baseUrl = 'http://localhost:3001';
 
 export default class RiskProjectsService {
 
@@ -39,8 +39,8 @@ export default class RiskProjectsService {
                 },
                 body: JSON.stringify({id: project.id, name: project.name})
             })
-            .then(resposne => {
-                return resposne.json();
+            .then(response => {
+                return response.json();
             });
     }
 }
